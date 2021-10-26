@@ -109,3 +109,101 @@ class RowParallelLinear(torch.nn.Module):
             output = output_
             output_bias = self.bias
         return output, output_bias
+
+
+
+
+
+
+@torch.jit.script
+def gelu_impl(x):
+    """OpenAI's gelu implementation."""
+    return 0.5 * x * (1.0 + torch.tanh(0.7978845608028654 * x *
+                                       (1.0 + 0.044715 * x * x)))
+def openai_gelu(x):
+    return gelu_impl(x)
+
+#This is actually Python equivalent of torch.nn.functional.gelu(), also with type hints for ONNX exporter
+@torch.jit.script
+def erf_gelu(x):
+    return x * 0.5 * (torch.erf(x / 1.41421).to(dtype=x.dtype)+torch.ones_like(x).to(dtype=x.dtype))
+
+
+@torch.jit.script
+def bias_gelu(bias, y):
+    x = bias + y
+    return  x * 0.5 * (1.0 + torch.tanh(0.79788456 * x * (1 + 0.044715 * x * x)))
+
+# gradient of tanh approximation of gelu
+# gradient of actual gelu is:
+# 0.5 * (1. + torch.erf(x * 0.70710678)) + 0.3989423 * x * torch.exp(-0.5 * x * x)
+@torch.jit.script
+def bias_gelu_back(g, bias, y):
+    x = bias + y
+    tanh_out = torch.tanh(0.79788456 * x * (1 + 0.044715 * x * x))
+    # sqrt(2/pi) * 3 * 0.044715 -> 0.1070322243
+    ff = 0.5 * x * ((1 - tanh_out * tanh_out) * (0.79788456 + 0.1070322243 * x * x)) + 0.5 * (1 + tanh_out)
+    return ff*g
+
+class GeLUFunction(torch.autograd.Function):
+    @staticmethod
+    # bias is an optional argument
+    def forward(ctx, input, bias):
+        ctx.save_for_backward(input, bias)
+        return bias_gelu(bias, input)
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        input, bias = ctx.saved_tensors
+        tmp = bias_gelu_back(grad_output, bias, input)
+        return tmp, tmp
+
+bias_gelu_impl = GeLUFunction.apply
+
+class ParallelMLP(torch.nn.Module):
+    """MLP.
+
+    MLP will take the input with h hidden state, project it to 4*h
+    hidden dimension, perform nonlinear transformation, and project the
+    state back into h hidden dimension.
+    """
+
+    def __init__(self, hidden_size, ffn_hidden_size, bias_gelu_fusion=False, openai_gelu=True, onnx_safe=False):
+        super(ParallelMLP, self).__init__()
+
+        # Project to 4h.
+        self.dense_h_to_4h = ColumnParallelLinear(
+            hidden_size,
+            ffn_hidden_size,
+            gather_output=False,
+            skip_bias_add=True)
+
+        self.bias_gelu_fusion = bias_gelu_fusion
+        self.activation_func = nn.functional.gelu
+        if openai_gelu:
+            self.activation_func = openai_gelu
+        elif onnx_safe:
+            self.activation_func = erf_gelu
+
+        # Project back to h.
+        self.dense_4h_to_h = RowParallelLinear(
+            ffn_hidden_size,
+            hidden_size,
+            input_is_parallel=True,
+            skip_bias_add=True)
+
+    def forward(self, hidden_states):
+
+        # [s, b, 4hp]
+        intermediate_parallel, bias_parallel = self.dense_h_to_4h(hidden_states)
+
+        if self.bias_gelu_fusion:
+             intermediate_parallel = \
+                     bias_gelu_impl(intermediate_parallel, bias_parallel)
+        else:
+            intermediate_parallel = \
+                self.activation_func(intermediate_parallel + bias_parallel)
+
+        # [s, b, h]
+        output, output_bias = self.dense_4h_to_h(intermediate_parallel)
+        return output, output_bias

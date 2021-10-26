@@ -3,25 +3,20 @@ import os
 from DataLoader import FakeDataLoader
 from initialize import initialize_model_parallel
 from utils import *
-from layers import ColumnParallelLinear, RowParallelLinear
+from layers import ParallelMLP
 
 def train():
     batch_size = 64
     dim = 1024
 
-    column_parallel_model = ColumnParallelLinear(dim, dim*batch_size, gather_output=False)
-    column_parallel_model = column_parallel_model.cuda()
-
-    row_parallel_model = RowParallelLinear(dim*batch_size, dim*batch_size, input_is_parallel=True)
-    row_parallel_model = row_parallel_model.cuda()
+    model = ParallelMLP(hidden_size=dim, ffn_hidden_size=dim*batch_size)
 
     dataloader = FakeDataLoader((batch_size, dim))
 
-    def train_iter(column_parallel_model, row_parallel_model, dataloader):
+    def train_iter(model, dataloader):
         for _ in range(4):
             data = next(dataloader)
-            temp_output = column_parallel_model(data)
-            output = row_parallel_model(temp_output)
+            output = model(data)
 
             output_list = list(output)
             output =output_list[0]
@@ -31,12 +26,12 @@ def train():
             print(f'loss={loss.item()}')
             loss.backward()
     
-    optimizer = torch.optim.SGD(row_parallel_model.parameters(), lr=0.01, momentum=0.9)
+    #optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
 
     for epoch in range(10):
-        train_iter(column_parallel_model, row_parallel_model, dataloader)
-        optimizer.step()
-        optimizer.zero_grad()
+        train_iter(model, dataloader)
+        #optimizer.step()
+        #optimizer.zero_grad()
 
 
 
