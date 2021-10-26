@@ -1,5 +1,9 @@
 import torch
 
+'''
+This is the python script used to store Dataloaders
+'''
+
 class FakeDataLoader:
     def __init__(self, shape, num=640):
         self.shape = shape
