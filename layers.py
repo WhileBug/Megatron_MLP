@@ -168,7 +168,7 @@ class ParallelMLP(torch.nn.Module):
     state back into h hidden dimension.
     """
 
-    def __init__(self, hidden_size, ffn_hidden_size, bias_gelu_fusion=False, openai_gelu=True, onnx_safe=False):
+    def __init__(self, hidden_size, ffn_hidden_size, bias_gelu_fusion=True, openai_gelu=False, onnx_safe=False):
         super(ParallelMLP, self).__init__()
 
         # Project to 4h.
