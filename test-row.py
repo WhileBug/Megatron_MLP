@@ -8,12 +8,13 @@ from utils import *
 from layers import RowParallelLinear
 
 COMPUTE_TIME_RECORD = True
+COMMUNICATE_TIME_RECORD = True
 
 
 def train():
-    batch_size = 64
-    dim = 1024
-    model = RowParallelLinear(dim, dim*batch_size, compute_time_record=COMPUTE_TIME_RECORD)
+    batch_size =8192
+    dim = 8192
+    model = RowParallelLinear(dim, dim*batch_size, compute_time_record=COMPUTE_TIME_RECORD, communicate_time_record=COMMUNICATE_TIME_RECORD)
     model = model.cuda()
 
     dataloader = FakeDataLoader((batch_size, dim))
@@ -39,8 +40,9 @@ def train():
         optimizer.zero_grad()
     
     if(COMPUTE_TIME_RECORD):
-        print(model.compute_time)
-        print(mean(model.compute_time))
+        print(torch.distributed.get_rank()," device's compute time is ",mean(model.compute_time[1:]),"in ",len(model.communicate_time)," rounds")
+    if(COMMUNICATE_TIME_RECORD):
+        print(torch.distributed.get_rank()," device's communicate time is ",mean(model.communicate_time[1:]),"in ",len(model.communicate_time)," rounds")
 
 
 

@@ -9,7 +9,7 @@ from numpy import mean
 COMPUTE_TIME_RECORD = True
 
 def train():
-    batch_size = 64
+    batch_size = 512
     dim = 1024
 
     model = ColumnParallelLinear(dim, dim*batch_size, gather_output=True, compute_time_record=COMPUTE_TIME_RECORD)
@@ -27,7 +27,7 @@ def train():
 
             output = torch.as_tensor(output, dtype=float, device=None)
             loss = torch.sum(output) / 1000
-            print(f'loss={loss.item()}')
+            #print(f'loss={loss.item()}')
             loss.backward()
     
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
@@ -38,7 +38,7 @@ def train():
         optimizer.zero_grad()
     if(COMPUTE_TIME_RECORD):
         print(model.compute_time)
-        print(mean(model.compute_time))
+        print(mean(model.compute_time[1:]))
 
 
 

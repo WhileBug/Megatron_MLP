@@ -69,8 +69,8 @@ class ColumnParallelLinear(torch.nn.Module):
             self.compute_time.append(row_compute_time)
         if self.gather_output:
             # All-gather across the partitions.
-            print(output_parallel)
-            print(torch.distributed.get_world_size())
+            #print(output_parallel)
+            #print(torch.distributed.get_world_size())
             output = OutputAdapter.apply(output_parallel)
         else:
             os.system("pause")
@@ -130,7 +130,17 @@ class RowParallelLinear(torch.nn.Module):
             row_compute_time = time_after-time_before
             self.compute_time.append(row_compute_time)
         # All-reduce across all the partitions.
+        if(self.communicate_time_record):
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
+            time_before_communicate = time.time()
         output_ = reduce_from_tensor_model_parallel_region(output_parallel)
+        if(self.communicate_time_record):
+            torch.cuda.synchronize()
+            time_after_communicate = time.time()
+            row_commmunicate_time = time_after_communicate-time_before_communicate
+            self.communicate_time.append(row_commmunicate_time)
+
         if not self.skip_bias_add:
             output = output_ + self.bias if self.bias is not None else output_
             output_bias = None
