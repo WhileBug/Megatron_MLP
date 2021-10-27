@@ -4,14 +4,15 @@ from DataLoader import FakeDataLoader
 from initialize import initialize_model_parallel
 from utils import *
 from layers import ColumnParallelLinear
+from numpy import mean
 
-
+COMPUTE_TIME_RECORD = True
 
 def train():
     batch_size = 64
     dim = 1024
 
-    model = ColumnParallelLinear(dim, dim*batch_size, gather_output=True)
+    model = ColumnParallelLinear(dim, dim*batch_size, gather_output=True, compute_time_record=COMPUTE_TIME_RECORD)
     model = model.cuda()
 
     dataloader = FakeDataLoader((batch_size, dim))
@@ -35,6 +36,9 @@ def train():
         train_iter(model, dataloader)
         optimizer.step()
         optimizer.zero_grad()
+    if(COMPUTE_TIME_RECORD):
+        print(model.compute_time)
+        print(mean(model.compute_time))
 
 
 

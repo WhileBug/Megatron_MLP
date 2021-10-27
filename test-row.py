@@ -2,18 +2,18 @@ import torch
 import os
 from DataLoader import FakeDataLoader
 from initialize import initialize_model_parallel
-
+from numpy import mean
 
 from utils import *
 from layers import RowParallelLinear
 
+COMPUTE_TIME_RECORD = True
 
 
 def train():
     batch_size = 64
     dim = 1024
-
-    model = RowParallelLinear(dim, dim*batch_size)
+    model = RowParallelLinear(dim, dim*batch_size, compute_time_record=COMPUTE_TIME_RECORD)
     model = model.cuda()
 
     dataloader = FakeDataLoader((batch_size, dim))
@@ -28,7 +28,7 @@ def train():
 
             output = torch.as_tensor(output, dtype=float, device=None)
             loss = torch.sum(output) / 1000
-            print(f'loss={loss.item()}')
+            #print(f'loss={loss.item()}')
             loss.backward()
     
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
@@ -37,13 +37,18 @@ def train():
         train_iter(model, dataloader)
         optimizer.step()
         optimizer.zero_grad()
+    
+    if(COMPUTE_TIME_RECORD):
+        print(model.compute_time)
+        print(mean(model.compute_time))
 
 
 
 if __name__ == '__main__':
     torch.distributed.init_process_group(backend='nccl')
     world_size = int(os.environ['WORLD_SIZE'])
+    print("world size is ",world_size)
     local_rank = int(os.environ['LOCAL_RANK'])
     torch.cuda.set_device(local_rank)
-    initialize_model_parallel(2)
+    initialize_model_parallel(world_size)
     train()

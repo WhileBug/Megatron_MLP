@@ -26,12 +26,12 @@ def train():
             print(f'loss={loss.item()}')
             loss.backward()
     
-    #optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
 
     for epoch in range(10):
         train_iter(model, dataloader)
-        #optimizer.step()
-        #optimizer.zero_grad()
+        optimizer.step()
+        optimizer.zero_grad()
 
 
 

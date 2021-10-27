@@ -3,6 +3,7 @@ from torch import nn
 from torch._C import dtype
 from utils import *
 import os
+import time
 
 # Original MLP without any Parallel
 class MLP(nn.Module):
@@ -27,13 +28,16 @@ class MLP(nn.Module):
 # Column Parallel Linear layer
 class ColumnParallelLinear(torch.nn.Module):
     # Initialize function
-    def __init__(self, input_size, output_size, bias=True, gather_output=True, skip_bias_add=False, world_size = 2):
+    def __init__(self, input_size, output_size, bias=True, gather_output=True, skip_bias_add=False, compute_time_record=False, communicate_time_record=False):
         super(ColumnParallelLinear, self).__init__()
         # Get input parameters
         self.input_size = input_size
         self.output_size = output_size
         self.gather_output = gather_output
-        # Cut the model's weight from its last dimension
+        self.compute_time_record=compute_time_record
+        self.communicate_time_record = communicate_time_record
+        # Divide the weight matrix along the last dimension.
+        world_size = int(os.environ['WORLD_SIZE'])
         self.output_size_per_partition = output_size//world_size
         self.skip_bias_add = skip_bias_add
         # Initialize the original weight of the model
@@ -47,12 +51,22 @@ class ColumnParallelLinear(torch.nn.Module):
             # Always initialize bias to zero.
             with torch.no_grad():
                 self.bias.zero_()
+        self.compute_time = []
+        self.communicate_time = []
     # Forward functions
     def forward(self, input_):
         "not consider about the async all reduce"
         input_parallel = copy_to_tensor_model_parallel_region(input_)
         '''conduct linear computation'''
-        output_parallel = nn.functional.linear(input_parallel, self.weight, self.bias)
+        if(self.compute_time_record):
+            torch.cuda.synchronize()
+            time_before = time.time()
+        output_parallel = nn.functional.linear(input_parallel, self.weight)
+        if(self.compute_time_record):
+            torch.cuda.synchronize()
+            time_after = time.time()
+            row_compute_time = time_after-time_before
+            self.compute_time.append(row_compute_time)
         if self.gather_output:
             # All-gather across the partitions.
             print(output_parallel)
@@ -67,14 +81,16 @@ class ColumnParallelLinear(torch.nn.Module):
 class RowParallelLinear(torch.nn.Module):
     def __init__(self, input_size, output_size, bias=True,
                  input_is_parallel=False, 
-                 skip_bias_add=False):
+                 skip_bias_add=False, compute_time_record=False, communicate_time_record=False):
         super(RowParallelLinear, self).__init__()
         # Keep input parameters
         self.input_size = input_size
         self.output_size = output_size
         self.input_is_parallel = input_is_parallel
+        self.compute_time_record=compute_time_record
+        self.communicate_time_record = communicate_time_record
         # Divide the weight matrix along the last dimension.
-        world_size = 2
+        world_size = int(os.environ['WORLD_SIZE'])
         self.input_size_per_partition = divide(input_size, world_size)
         self.skip_bias_add = skip_bias_add
         self.weight = nn.Parameter(torch.empty(
@@ -90,6 +106,9 @@ class RowParallelLinear(torch.nn.Module):
         else:
             self.register_parameter('bias', None)
 
+        self.compute_time = []
+        self.communicate_time = []
+
 
 
     def forward(self, input_):
@@ -99,7 +118,17 @@ class RowParallelLinear(torch.nn.Module):
         else:
             input_parallel = scatter_to_tensor_model_parallel_region(input_)
         # Matrix multiply.
+
+        # Measure the time for the computation of the row parallel linear layer
+        if(self.compute_time_record):
+            torch.cuda.synchronize()
+            time_before = time.time()
         output_parallel = nn.functional.linear(input_parallel, self.weight)
+        if(self.compute_time_record):
+            torch.cuda.synchronize()
+            time_after = time.time()
+            row_compute_time = time_after-time_before
+            self.compute_time.append(row_compute_time)
         # All-reduce across all the partitions.
         output_ = reduce_from_tensor_model_parallel_region(output_parallel)
         if not self.skip_bias_add:
