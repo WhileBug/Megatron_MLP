@@ -71,7 +71,16 @@ class ColumnParallelLinear(torch.nn.Module):
             # All-gather across the partitions.
             #print(output_parallel)
             #print(torch.distributed.get_world_size())
+            if(self.communicate_time_record):
+                torch.cuda.synchronize()
+                torch.distributed.barrier()
+                time_before_communicate = time.time()
             output = OutputAdapter.apply(output_parallel)
+            if(self.communicate_time_record):
+                torch.cuda.synchronize()
+                time_after_communicate = time.time()
+                row_commmunicate_time = time_after_communicate-time_before_communicate
+                self.communicate_time.append(row_commmunicate_time)
         else:
             os.system("pause")
             output = output_parallel

@@ -7,12 +7,13 @@ from layers import ColumnParallelLinear
 from numpy import mean
 
 COMPUTE_TIME_RECORD = True
+COMMUNICATE_TIME_RECORD = True
 
 def train():
-    batch_size = 512
+    batch_size = 16
     dim = 1024
 
-    model = ColumnParallelLinear(dim, dim*batch_size, gather_output=True, compute_time_record=COMPUTE_TIME_RECORD)
+    model = ColumnParallelLinear(dim, dim*batch_size, gather_output=True, compute_time_record=COMPUTE_TIME_RECORD, communicate_time_record=COMMUNICATE_TIME_RECORD)
     model = model.cuda()
 
     dataloader = FakeDataLoader((batch_size, dim))
@@ -36,9 +37,11 @@ def train():
         train_iter(model, dataloader)
         optimizer.step()
         optimizer.zero_grad()
+
     if(COMPUTE_TIME_RECORD):
-        print(model.compute_time)
-        print(mean(model.compute_time[1:]))
+        print(torch.distributed.get_rank()," device's compute time is ",mean(model.compute_time[1:]),"in ",len(model.communicate_time)," rounds")
+    if(COMMUNICATE_TIME_RECORD):
+        print(torch.distributed.get_rank()," device's communicate time is ",mean(model.communicate_time[1:]),"in ",len(model.communicate_time)," rounds")
 
 
 
