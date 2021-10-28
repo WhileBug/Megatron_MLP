@@ -135,6 +135,7 @@ class _ReduceFromModelParallelRegion(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, grad_output):
+        #print("phase 3 backward executed")
         return grad_output
 
 
@@ -147,10 +148,12 @@ class _ScatterToModelParallelRegion(torch.autograd.Function):
 
     @staticmethod
     def forward(ctx, input_):
+        #print("phase 1 forward executed")
         return _split(input_)
 
     @staticmethod
     def backward(ctx, grad_output):
+        #print("phase 1 backward executed")
         return _gather(grad_output)
 class OutputAdapter(torch.autograd.Function):
     @staticmethod

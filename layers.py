@@ -90,14 +90,22 @@ class ColumnParallelLinear(torch.nn.Module):
 class RowParallelLinear(torch.nn.Module):
     def __init__(self, input_size, output_size, bias=True,
                  input_is_parallel=False, 
-                 skip_bias_add=False, compute_time_record=False, communicate_time_record=False):
+                 skip_bias_add=False, 
+                 phase_1_forward_time=False,
+                 phase_1_backward_time=False,
+                 phase_2_forward_time=False,
+                 phase_2_backward_time=False,
+                 phase_3_forward_time=False,
+                 phase_3_backward_time=False
+                 ):
         super(RowParallelLinear, self).__init__()
         # Keep input parameters
         self.input_size = input_size
         self.output_size = output_size
         self.input_is_parallel = input_is_parallel
-        self.compute_time_record=compute_time_record
-        self.communicate_time_record = communicate_time_record
+        self.compute_time_record= phase_2_forward_time
+        self.communicate_time_record = phase_3_forward_time
+        self.phase_1_forward_time = phase_1_forward_time
         # Divide the weight matrix along the last dimension.
         world_size = int(os.environ['WORLD_SIZE'])
         self.input_size_per_partition = divide(input_size, world_size)
@@ -118,6 +126,7 @@ class RowParallelLinear(torch.nn.Module):
 
         self.compute_time = []
         self.communicate_time = []
+        self.phase_1_forward_time_list = []
 
 
 
@@ -126,7 +135,15 @@ class RowParallelLinear(torch.nn.Module):
         if self.input_is_parallel:
             input_parallel = input_
         else:
+            if(self.phase_1_forward_time):
+                torch.cuda.synchronize()
+                time_before = time.time()
             input_parallel = scatter_to_tensor_model_parallel_region(input_)
+            if(self.phase_1_forward_time):
+                torch.cuda.synchronize()
+                time_after = time.time()
+                self.phase_1_forward_time_list.append(time_after-time_before)
+            #input_parallel = input_parallel.detach()
         # Matrix multiply.
 
         # Measure the time of the forward cost of phase 2
