@@ -10,13 +10,14 @@ COMPUTE_TIME_RECORD = True
 COMMUNICATE_TIME_RECORD = True
 
 def train():
-    batch_size = 16
-    dim = 1024
+    input_size_m = 512
+    input_size_k = 512
+    output_size_n =1024
 
-    model = ColumnParallelLinear(dim, dim*batch_size, gather_output=True, compute_time_record=COMPUTE_TIME_RECORD, communicate_time_record=COMMUNICATE_TIME_RECORD)
+    model = ColumnParallelLinear(input_size_k, output_size_n, gather_output=True, compute_time_record=COMPUTE_TIME_RECORD, communicate_time_record=COMMUNICATE_TIME_RECORD)
     model = model.cuda()
 
-    dataloader = FakeDataLoader((batch_size, dim))
+    dataloader = FakeDataLoader((input_size_m, input_size_k))
 
     def train_iter(model, dataloader):
         for _ in range(4):
