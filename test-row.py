@@ -34,7 +34,7 @@ def train(TEST_SIZE):
     
     
 
-    phase_2_backward_list = []
+    backward_time_list = []
     for epoch in range(10):
         data = next(dataloader)
         output = model(data)
@@ -46,17 +46,17 @@ def train(TEST_SIZE):
         loss = torch.sum(output) / 1000
 
         # Measure the time of backward function in phase 2
-        if(PHASE_2_BACKWARD_TIME):
+        if(PHASE_2_BACKWARD_TIME or PHASE_3_BACKWARD_TIME):
             torch.cuda.synchronize()
             time_before = time.time()
         loss.backward()
         optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
         optimizer.step()
         optimizer.zero_grad()
-        if(PHASE_2_BACKWARD_TIME):
+        if(PHASE_2_BACKWARD_TIME or PHASE_3_BACKWARD_TIME):
             torch.cuda.synchronize()
             time_after = time.time()
-            phase_2_backward_list.append(time_after-time_before)
+            backward_time_list.append(time_after-time_before)
         
     
     if(TIME_MEASURE):
@@ -64,9 +64,10 @@ def train(TEST_SIZE):
         time_record_dict["test size"]=TEST_SIZE
         time_record_dict["device number"]=torch.distributed.get_rank()
         time_record_dict["phase 1 forward time"]=mean(model.phase_1_forward_time_list[1:])
-        time_record_dict["phase 2 forward time"]=mean(model.compute_time[1:])
-        time_record_dict["phase 3 forward time"]=mean(model.communicate_time[1:])
-        time_record_dict["round number"]=len(model.communicate_time)
+        time_record_dict["phase 2 forward time"]=mean(model.phase_2_forward_time_list[1:])
+        time_record_dict["phase 3 forward time"]=mean(model.phase_3_forward_time_list[1:])
+        time_record_dict["backward time"]=mean(backward_time_list[1:])
+        time_record_dict["round number"]=len(model.phase_1_forward_time_list)
         time_record_list.append(time_record_dict)
 
 

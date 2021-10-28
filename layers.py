@@ -103,8 +103,8 @@ class RowParallelLinear(torch.nn.Module):
         self.input_size = input_size
         self.output_size = output_size
         self.input_is_parallel = input_is_parallel
-        self.compute_time_record= phase_2_forward_time
-        self.communicate_time_record = phase_3_forward_time
+        self.phase_2_forward_time= phase_2_forward_time
+        self.phase_3_forward_time = phase_3_forward_time
         self.phase_1_forward_time = phase_1_forward_time
         # Divide the weight matrix along the last dimension.
         world_size = int(os.environ['WORLD_SIZE'])
@@ -124,8 +124,8 @@ class RowParallelLinear(torch.nn.Module):
         else:
             self.register_parameter('bias', None)
 
-        self.compute_time = []
-        self.communicate_time = []
+        self.phase_2_forward_time_list = []
+        self.phase_3_forward_time_list = []
         self.phase_1_forward_time_list = []
 
 
@@ -147,26 +147,26 @@ class RowParallelLinear(torch.nn.Module):
         # Matrix multiply.
 
         # Measure the time of the forward cost of phase 2
-        if(self.compute_time_record):
+        if(self.phase_2_forward_time):
             torch.cuda.synchronize()
             time_before = time.time()
         output_parallel = nn.functional.linear(input_parallel, self.weight)
-        if(self.compute_time_record):
+        if(self.phase_2_forward_time):
             torch.cuda.synchronize()
             time_after = time.time()
             row_compute_time = time_after-time_before
-            self.compute_time.append(row_compute_time)
+            self.phase_2_forward_time_list.append(row_compute_time)
         # Measure the time of the forward cost of phase 3
-        if(self.communicate_time_record):
+        if(self.phase_3_forward_time):
             torch.cuda.synchronize()
             torch.distributed.barrier()
             time_before_communicate = time.time()
         output_ = reduce_from_tensor_model_parallel_region(output_parallel)
-        if(self.communicate_time_record):
+        if(self.phase_3_forward_time):
             torch.cuda.synchronize()
             time_after_communicate = time.time()
             row_commmunicate_time = time_after_communicate-time_before_communicate
-            self.communicate_time.append(row_commmunicate_time)
+            self.phase_3_forward_time_list.append(row_commmunicate_time)
 
         if not self.skip_bias_add:
             output = output_ + self.bias if self.bias is not None else output_
