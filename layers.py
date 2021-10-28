@@ -129,7 +129,7 @@ class RowParallelLinear(torch.nn.Module):
             input_parallel = scatter_to_tensor_model_parallel_region(input_)
         # Matrix multiply.
 
-        # Measure the time for the computation of the row parallel linear layer
+        # Measure the time of the forward cost of phase 2
         if(self.compute_time_record):
             torch.cuda.synchronize()
             time_before = time.time()
@@ -139,7 +139,7 @@ class RowParallelLinear(torch.nn.Module):
             time_after = time.time()
             row_compute_time = time_after-time_before
             self.compute_time.append(row_compute_time)
-        # All-reduce across all the partitions.
+        # Measure the time of the forward cost of phase 3
         if(self.communicate_time_record):
             torch.cuda.synchronize()
             torch.distributed.barrier()

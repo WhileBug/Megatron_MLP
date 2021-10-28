@@ -22,7 +22,7 @@ def train():
     dataloader = FakeDataLoader((input_size_m, input_size_k))
 
     def train_iter(model, dataloader):
-        for _ in range(4):
+        for _ in range(1):
             data = next(dataloader)
             output = model(data)
 
