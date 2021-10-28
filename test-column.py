@@ -15,11 +15,10 @@ PHASE_3_FORWARD_TIME = True
 PHASE_3_BACKWARD_TIME = True
 TIME_MEASURE = True
 
-TEST_SIZE = 512
 
 time_record_list = []
 
-def train():
+def train(TEST_SIZE):
     input_size_m = TEST_SIZE
     input_size_k = TEST_SIZE
     output_size_n =TEST_SIZE
@@ -72,5 +71,5 @@ if __name__ == '__main__':
     local_rank = int(os.environ['LOCAL_RANK'])
     torch.cuda.set_device(local_rank)
     initialize_model_parallel(2)
-    train()
+    train(512)
     print(time_record_list)
