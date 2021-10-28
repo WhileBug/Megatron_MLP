@@ -4,7 +4,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-def time_test_draw(time_list, savedir):
+def time_test_bar_draw(time_list, savedir):
     time_dataframe = pd.DataFrame(time_list)
     print(time_dataframe)
     plt.figure(dpi=150)
@@ -21,5 +21,39 @@ def time_test_draw(time_list, savedir):
     sns.barplot(x='test size',y='backward time', data=time_dataframe)
     plt.savefig(savedir+"/backward time.jpg")
 
-time_test_draw(column_test_time_list,"column")
-time_test_draw(row_test_time_list,"row")
+#time_test_draw(column_test_time_list,"column")
+#time_test_draw(row_test_time_list,"row")
+def time_test_all_bar_draw(time_list, savedir):
+    time_list_2 = []
+    for test_time in time_list:
+
+        test_time_dict = {}
+        test_time_dict['test size']=test_time['test size']
+        test_time_dict['time type']='phase 1 forward time'
+        test_time_dict['time']=test_time[ test_time_dict['time type'] ]
+        time_list_2.append(test_time_dict)
+
+        test_time_dict = {}
+        test_time_dict['test size']=test_time['test size']
+        test_time_dict['time type']='phase 2 forward time'
+        test_time_dict['time']=test_time[ test_time_dict['time type'] ]
+        time_list_2.append(test_time_dict)
+
+        test_time_dict = {}
+        test_time_dict['test size']=test_time['test size']
+        test_time_dict['time type']='phase 3 forward time'
+        test_time_dict['time']=test_time[ test_time_dict['time type'] ]
+        time_list_2.append(test_time_dict)
+
+        test_time_dict = {}
+        test_time_dict['test size']=test_time['test size']
+        test_time_dict['time type']='backward time'
+        test_time_dict['time']=test_time[ test_time_dict['time type'] ]
+        time_list_2.append(test_time_dict)
+
+    time_dataframe = pd.DataFrame(time_list_2)
+    plt.figure(dpi=150)
+    plt.clf()
+    sns.barplot(x="test size", y="time", data=time_dataframe, hue="time type")
+    plt.savefig(savedir+"/all.jpg")
+time_test_all_bar_draw(row_test_time_list, "row")
