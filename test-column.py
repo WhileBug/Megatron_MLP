@@ -9,10 +9,12 @@ from numpy import mean
 COMPUTE_TIME_RECORD = True
 COMMUNICATE_TIME_RECORD = True
 
+TEST_SIZE = 32768
+
 def train():
-    input_size_m = 512
-    input_size_k = 512
-    output_size_n =1024
+    input_size_m = TEST_SIZE
+    input_size_k = TEST_SIZE
+    output_size_n =TEST_SIZE
 
     model = ColumnParallelLinear(input_size_k, output_size_n, gather_output=True, compute_time_record=COMPUTE_TIME_RECORD, communicate_time_record=COMMUNICATE_TIME_RECORD)
     model = model.cuda()
