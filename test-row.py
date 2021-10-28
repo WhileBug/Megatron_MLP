@@ -12,12 +12,13 @@ COMMUNICATE_TIME_RECORD = True
 
 
 def train():
-    batch_size =8192
-    dim = 8192
-    model = RowParallelLinear(dim, dim*batch_size, compute_time_record=COMPUTE_TIME_RECORD, communicate_time_record=COMMUNICATE_TIME_RECORD)
+    input_size_m = 512
+    input_size_k = 512
+    output_size_n =1024
+    model = RowParallelLinear(input_size_k, output_size_n, compute_time_record=COMPUTE_TIME_RECORD, communicate_time_record=COMMUNICATE_TIME_RECORD)
     model = model.cuda()
 
-    dataloader = FakeDataLoader((batch_size, dim))
+    dataloader = FakeDataLoader((input_size_m, input_size_k))
 
     def train_iter(model, dataloader):
         for _ in range(4):

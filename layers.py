@@ -102,6 +102,7 @@ class RowParallelLinear(torch.nn.Module):
         world_size = int(os.environ['WORLD_SIZE'])
         self.input_size_per_partition = divide(input_size, world_size)
         self.skip_bias_add = skip_bias_add
+        print(self.output_size," ", self.input_size_per_partition)
         self.weight = nn.Parameter(torch.empty(
                 self.output_size, self.input_size_per_partition,
                 device=torch.cuda.current_device(), dtype=torch.float))
