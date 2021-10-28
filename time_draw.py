@@ -9,5 +9,12 @@ def time_test_draw(time_list):
     print(time_dataframe)
     plt.figure(dpi=150)
     sns.barplot(x='test size',y='phase 1 forward time', data=time_dataframe)
+    plt.savefig("img/phase 1 forward time.jpg")
+    sns.barplot(x='test size',y='phase 2 forward time', data=time_dataframe)
+    plt.savefig("img/phase 2 forward time.jpg")
+    sns.barplot(x='test size',y='phase 3 forward time', data=time_dataframe)
+    plt.savefig("img/phase 3 forward time.jpg")
+    sns.barplot(x='test size',y='backward time', data=time_dataframe)
+    plt.savefig("img/backward time.jpg")
 
 time_test_draw(column_test_time_list)
