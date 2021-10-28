@@ -28,14 +28,21 @@ class MLP(nn.Module):
 # Column Parallel Linear layer
 class ColumnParallelLinear(torch.nn.Module):
     # Initialize function
-    def __init__(self, input_size, output_size, bias=True, gather_output=True, skip_bias_add=False, compute_time_record=False, communicate_time_record=False):
+    def __init__(self, input_size, output_size, bias=True, gather_output=True, skip_bias_add=False, compute_time_record=False, communicate_time_record=False,
+                 phase_1_forward_time=False,
+                 phase_1_backward_time=False,
+                 phase_2_forward_time=False,
+                 phase_2_backward_time=False,
+                 phase_3_forward_time=False,
+                 phase_3_backward_time=False):
         super(ColumnParallelLinear, self).__init__()
         # Get input parameters
         self.input_size = input_size
         self.output_size = output_size
         self.gather_output = gather_output
-        self.compute_time_record=compute_time_record
-        self.communicate_time_record = communicate_time_record
+        self.phase_2_forward_time= phase_2_forward_time
+        self.phase_3_forward_time = phase_3_forward_time
+        self.phase_1_forward_time = phase_1_forward_time
         # Divide the weight matrix along the last dimension.
         world_size = int(os.environ['WORLD_SIZE'])
         self.output_size_per_partition = output_size//world_size
@@ -51,36 +58,44 @@ class ColumnParallelLinear(torch.nn.Module):
             # Always initialize bias to zero.
             with torch.no_grad():
                 self.bias.zero_()
-        self.compute_time = []
-        self.communicate_time = []
+        self.phase_2_forward_time_list = []
+        self.phase_3_forward_time_list = []
+        self.phase_1_forward_time_list = []
     # Forward functions
     def forward(self, input_):
         "not consider about the async all reduce"
+        if(self.phase_1_forward_time):
+                torch.cuda.synchronize()
+                time_before = time.time()
         input_parallel = copy_to_tensor_model_parallel_region(input_)
+        if(self.phase_1_forward_time):
+                torch.cuda.synchronize()
+                time_after = time.time()
+                self.phase_1_forward_time_list.append(time_after-time_before)
         '''conduct linear computation'''
-        if(self.compute_time_record):
+        if(self.phase_2_forward_time):
             torch.cuda.synchronize()
             time_before = time.time()
         output_parallel = nn.functional.linear(input_parallel, self.weight)
-        if(self.compute_time_record):
+        if(self.phase_2_forward_time):
             torch.cuda.synchronize()
             time_after = time.time()
             row_compute_time = time_after-time_before
-            self.compute_time.append(row_compute_time)
+            self.phase_2_forward_time_list.append(row_compute_time)
         if self.gather_output:
             # All-gather across the partitions.
             #print(output_parallel)
             #print(torch.distributed.get_world_size())
-            if(self.communicate_time_record):
+            if(self.phase_3_forward_time):
                 torch.cuda.synchronize()
                 torch.distributed.barrier()
                 time_before_communicate = time.time()
             output = OutputAdapter.apply(output_parallel)
-            if(self.communicate_time_record):
+            if(self.phase_3_forward_time):
                 torch.cuda.synchronize()
                 time_after_communicate = time.time()
                 row_commmunicate_time = time_after_communicate-time_before_communicate
-                self.communicate_time.append(row_commmunicate_time)
+                self.phase_3_forward_time_list.append(row_commmunicate_time)
         else:
             os.system("pause")
             output = output_parallel

@@ -33,7 +33,7 @@ def train(TEST_SIZE):
             
     
     
-
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
     backward_time_list = []
     for epoch in range(10):
         data = next(dataloader)
@@ -50,7 +50,6 @@ def train(TEST_SIZE):
             torch.cuda.synchronize()
             time_before = time.time()
         loss.backward()
-        optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
         optimizer.step()
         optimizer.zero_grad()
         if(PHASE_2_BACKWARD_TIME or PHASE_3_BACKWARD_TIME):
