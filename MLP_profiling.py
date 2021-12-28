@@ -79,4 +79,6 @@ if __name__ == '__main__':
     #parser.add_argument('--nproc_per_node', type=int, default = 2)
     #parser.add_argument('--nnodes', type=int, default=1)
     #args = parser.parse_args()
-    print("compute time",compute_time_profile(1024, 1024, 1024, 2))
+    result_T = compute_time_profile(1024, 1024, 1024, 2)
+    print("compute time",result_T)
+    return result_T
