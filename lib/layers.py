@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 from torch._C import dtype
-from utils import *
+from lib.utils import *
 import os
 import time
 

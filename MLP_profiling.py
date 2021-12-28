@@ -1,9 +1,9 @@
 import torch
 import os
-from DataLoader import FakeDataLoader
-from initialize import initialize_model_parallel
-from utils import *
-from layers import ColumnParallelLinear
+from lib.DataLoader import FakeDataLoader
+from lib.initialize import initialize_model_parallel
+from lib.utils import *
+from lib.layers import ColumnParallelLinear
 from numpy import mean
 import time
 import argparse
@@ -68,5 +68,15 @@ def compute_time_profile(input_size, hidden_size, output_size, partition_size):
     compute_T = train(input_size, hidden_size, output_size)
     return compute_T
 
+'''
+parser = argparse.ArgumentParser(description='manual to this script')
+parser.add_argument('--nproc_per_node', type=int, default = 2)
+parser.add_argument('--nnodes', type=int, default=1)
+args = parser.parse_args()
+'''
 if __name__ == '__main__':
+    #parser = argparse.ArgumentParser(description='manual to this script')
+    #parser.add_argument('--nproc_per_node', type=int, default = 2)
+    #parser.add_argument('--nnodes', type=int, default=1)
+    #args = parser.parse_args()
     print("compute time",compute_time_profile(1024, 1024, 1024, 2))

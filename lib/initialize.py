@@ -18,7 +18,7 @@
 
 import torch
 
-from utils import ensure_divisibility
+from lib.utils import ensure_divisibility
 
 
 # Intra-layer model parallel group that the current rank belongs to.
